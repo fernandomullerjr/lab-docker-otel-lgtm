@@ -1,4 +1,22 @@
 
+### COMANDOS ÚTEIS NO MINIKUBE:
+
+```bash
+minikube start --cpus=4 --memory=8192 --driver=docker
+```
+
+~~~~BASH
+## Abrir Dashboard do k8s
+minikube dashboard
+
+## Ativar o tunnel
+minikube tunnel
+
+## Fornecer url e porta para acessar o serviço, OBS: Gera porta aleatória acessível
+minikube service app-a --url
+minikube service grafana --url
+~~~~
+
 ## Run lgtm in Kubernetes
 
 ```sh
@@ -173,3 +191,19 @@ WARNING:app:Anonymous player is rolling the dice: 4
 ## PENDENTE
 - Revisar como subir app de exemplo em Go da pasta "lab-docker-otel-lgtm/examples/go"
 - Efetuar um cenário variado diferente.
+
+
+
+## Dia 31/01/2026
+
+- TSHOOT Porta 3000
+
+
+>
+> sudo grep -R --line-number '"HostPort":"3000"' /var/lib/docker/containers 2>/dev/null
+/var/lib/docker/containers/dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1/config.v2.json:1:{"StreamConfig":{},"State":{"Running":true,"Paused":false,"Restarting":false,"OOMKilled":false,"RemovalInProgress":false,"Dead":false,"Pid":40708,"ExitCode":0,"Error":"","StartedAt":"2026-01-31T15:55:49.832936683Z","FinishedAt":"2026-01-31T15:55:49.936046015Z","Health":{"Status":"starting","FailingStreak":0,"Log":[{"Start":"2026-01-31T12:53:55.24765491-03:00","End":"2026-01-31T12:53:55.298302547-03:00","ExitCode":0,"Output":"true\n"},{"Start":"2026-01-31T12:54:22.577534444-03:00","End":"2026-01-31T12:54:22.627184374-03:00","ExitCode":0,"Output":"true\n"},{"Start":"2026-01-31T12:54:49.910598269-03:00","End":"2026-01-31T12:54:49.960754345-03:00","ExitCode":0,"Output":"true\n"},{"Start":"2026-01-31T12:55:17.238577061-03:00","End":"2026-01-31T12:55:17.288109259-03:00","ExitCode":0,"Output":"true\n"},{"Start":"2026-01-31T12:55:44.562054354-03:00","End":"2026-01-31T12:55:44.612553597-03:00","ExitCode":0,"Output":"true\n"}]}},"ID":"dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1","Created":"2025-08-31T18:38:59.11161328Z","Managed":false,"Path":"bash","Args":["start.sh"],"Config":{"Hostname":"dde7a8080851","Domainname":"","User":"0:0","AttachStdin":false,"AttachStdout":false,"AttachStderr":false,"ExposedPorts":{"8080/tcp":{}},"Tty":false,"OpenStdin":false,"StdinOnce":false,"Env":["OLLAMA_BASE_URL=http://host.docker.internal:11434","PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D","PYTHON_VERSION=3.11.13","PYTHON_SHA256=8fb5f9fbc7609fa822cb31549884575db7fd9657cbffb89510b5d7975963a83a","ENV=prod","PORT=8080","USE_OLLAMA_DOCKER=false","USE_CUDA_DOCKER=false","USE_SLIM_DOCKER=false","USE_CUDA_DOCKER_VER=cu128","USE_EMBEDDING_MODEL_DOCKER=sentence-transformers/all-MiniLM-L6-v2","USE_RERANKING_MODEL_DOCKER=","OPENAI_API_BASE_URL=","OPENAI_API_KEY=","WEBUI_SECRET_KEY=","SCARF_NO_ANALYTICS=true","DO_NOT_TRACK=true","ANONYMIZED_TELEMETRY=false","WHISPER_MODEL=base","WHISPER_MODEL_DIR=/app/backend/data/cache/whisper/models","RAG_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2","RAG_RERANKING_MODEL=","SENTENCE_TRANSFORMERS_HOME=/app/backend/data/cache/embedding/models","TIKTOKEN_ENCODING_NAME=cl100k_base","TIKTOKEN_CACHE_DIR=/app/backend/data/cache/tiktoken","HF_HOME=/app/backend/data/cache/embedding/models","HOME=/root","WEBUI_BUILD_VERSION=2407d9b905978d68619bdce4021e424046ec8df9","DOCKER=true"],"Cmd":["bash","start.sh"],"Healthcheck":{"Test":["CMD-SHELL","curl --silent --fail http://localhost:${PORT:-8080}/health | jq -ne 'input.status == true' || exit 1"]},"Image":"ghcr.io/open-webui/open-webui:main","Volumes":null,"WorkingDir":"/app/backend","Entrypoint":null,"OnBuild":null,"Labels":{"org.opencontainers.image.created":"2025-08-28T10:40:43.547Z","org.opencontainers.image.description":"User-friendly AI Interface (Supports Ollama, OpenAI API, ...)","org.opencontainers.image.licenses":"NOASSERTION","org.opencontainers.image.revision":"2407d9b905978d68619bdce4021e424046ec8df9","org.opencontainers.image.source":"https://github.com/open-webui/open-webui","org.opencontainers.image.title":"open-webui","org.opencontainers.image.url":"https://github.com/open-webui/open-webui","org.opencontainers.image.version":"main"}},"Image":"sha256:1df9c23da52bf54e82590b721f9e091e3e9865271f14cdad364dee4a2d257661","ImageManifest":null,"NetworkSettings":{"Bridge":"","SandboxID":"d33feda521f8a56cebf1ca2aac56de087b93de0494ea80c20654acf86b107ff6","SandboxKey":"/var/run/docker/netns/d33feda521f8","HairpinMode":false,"LinkLocalIPv6Address":"","LinkLocalIPv6PrefixLen":0,"Networks":{"bridge":{"IPAMConfig":null,"Links":null,"Aliases":null,"MacAddress":"02:42:ac:12:00:02","DriverOpts":null,"NetworkID":"a7c0932a2acbbb9e19501a90f34108c290f4de0698eccd17d757d3606be0a8bc","EndpointID":"ff3d49d85b2fa549deb0228b7eb48395408e78ac01b723eb7e0c1791619f1dfa","Gateway":"172.18.0.1","IPAddress":"172.18.0.2","IPPrefixLen":16,"IPv6Gateway":"","GlobalIPv6Address":"","GlobalIPv6PrefixLen":0,"DNSNames":null,"IPAMOperational":false,"DesiredMacAddress":""}},"Service":null,"Ports":{"8080/tcp":[{"HostIp":"0.0.0.0","HostPort":"3000"}]},"SecondaryIPAddresses":null,"SecondaryIPv6Addresses":null,"HasSwarmEndpoint":false},"LogPath":"/var/lib/docker/containers/dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1/dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1-json.log","Name":"/open-webui","Driver":"overlay2","OS":"linux","RestartCount":0,"HasBeenStartedBefore":true,"HasBeenManuallyStopped":false,"MountPoints":{"/app/backend/data":{"Source":"/var/lib/docker/volumes/open-webui/_data","Destination":"/app/backend/data","RW":true,"Name":"open-webui","Driver":"local","Type":"volume","Relabel":"z","ID":"cede6c78f60adc202cb6630ad65d2051352f26ea754bf05057ed12a8a9e8fc7e","Spec":{"Type":"volume","Source":"open-webui","Target":"/app/backend/data"},"SkipMountpointCreation":false}},"SecretReferences":null,"ConfigReferences":null,"MountLabel":"","ProcessLabel":"","AppArmorProfile":"","SeccompProfile":"","NoNewPrivileges":false,"HostnamePath":"/var/lib/docker/containers/dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1/hostname","HostsPath":"/var/lib/docker/containers/dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1/hosts","ShmPath":"","ResolvConfPath":"/var/lib/docker/containers/dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1/resolv.conf","LocalLogCacheMeta":{"HaveNotifyEnabled":false}}
+/var/lib/docker/containers/dde7a808085163a0680de9bcf9495927334728320258c66faf0f5fb018a919f1/hostconfig.json:1:{"Binds":["open-webui:/app/backend/data"],"ContainerIDFile":"","LogConfig":{"Type":"json-file","Config":{"max-size":"100m"}},"NetworkMode":"bridge","PortBindings":{"8080/tcp":[{"HostIp":"","HostPort":"3000"}]},"RestartPolicy":{"Name":"always","MaximumRetryCount":0},"AutoRemove":false,"VolumeDriver":"","VolumesFrom":null,"ConsoleSize":[36,120],"CapAdd":null,"CapDrop":null,"CgroupnsMode":"host","Dns":[],"DnsOptions":[],"DnsSearch":[],"ExtraHosts":["host.docker.internal:host-gateway"],"GroupAdd":null,"IpcMode":"private","Cgroup":"","Links":null,"OomScoreAdj":0,"PidMode":"","Privileged":false,"PublishAllPorts":false,"ReadonlyRootfs":false,"SecurityOpt":null,"UTSMode":"","UsernsMode":"","ShmSize":67108864,"Runtime":"runc","Isolation":"","CpuShares":0,"Memory":0,"NanoCpus":0,"CgroupParent":"","BlkioWeight":0,"BlkioWeightDevice":[],"BlkioDeviceReadBps":[],"BlkioDeviceWriteBps":[],"BlkioDeviceReadIOps":[],"BlkioDeviceWriteIOps":[],"CpuPeriod":0,"CpuQuota":0,"CpuRealtimePeriod":0,"CpuRealtimeRuntime":0,"CpusetCpus":"","CpusetMems":"","Devices":[],"DeviceCgroupRules":null,"DeviceRequests":null,"MemoryReservation":0,"MemorySwap":0,"MemorySwappiness":null,"OomKillDisable":false,"PidsLimit":null,"Ulimits":[],"CpuCount":0,"CpuPercent":0,"IOMaximumIOps":0,"IOMaximumBandwidth":0,"MaskedPaths":["/proc/asound","/proc/acpi","/proc/kcore","/proc/keys","/proc/latency_stats","/proc/timer_list","/proc/timer_stats","/proc/sched_debug","/proc/scsi","/sys/firmware","/sys/devices/virtual/powercap"],"ReadonlyPaths":["/proc/bus","/proc/fs","/proc/irq","/proc/sys","/proc/sysrq-trigger"]}
+> date
+Sat Jan 31 13:19:09 -03 2026
+
+ ~                                  
