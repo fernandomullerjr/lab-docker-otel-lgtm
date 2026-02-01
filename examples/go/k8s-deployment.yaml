@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rolldice-config
+data:
+  OTEL_METRIC_EXPORT_INTERVAL: "5000"
+  OTEL_EXPORTER_OTLP_INSECURE: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rolldice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rolldice
+  template:
+    metadata:
+      labels:
+        app: rolldice
+    spec:
+      containers:
+      - name: rolldice
+        image: rolldice:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: "service.name=rolldice,service.instance.id=$(POD_NAME)"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        envFrom:
+        - configMapRef:
+            name: rolldice-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rolldice
+spec:
+  selector:
+    app: rolldice
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
