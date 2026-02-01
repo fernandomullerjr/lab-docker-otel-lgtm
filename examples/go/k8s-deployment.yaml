@@ -5,7 +5,7 @@ metadata:
 data:
   OTEL_METRIC_EXPORT_INTERVAL: "5000"
   OTEL_EXPORTER_OTLP_INSECURE: "true"
-  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://lgtm:4318"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,7 +26,7 @@ spec:
         image: rolldice:latest
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8080
+        - containerPort: 8081
         env:
         - name: OTEL_RESOURCE_ATTRIBUTES
           value: "service.name=rolldice,service.instance.id=$(POD_NAME)"
@@ -47,6 +47,6 @@ spec:
     app: rolldice
   ports:
   - protocol: TCP
-    port: 8080
-    targetPort: 8080
+    port: 8081
+    targetPort: 8081
   type: ClusterIP

@@ -26,10 +26,14 @@ kubectl apply -f k8s/lgtm.yaml
 
 # Configure port forwarding
 kubectl port-forward service/lgtm 3000:3000 4040:4040 4317:4317 4318:4318 9090:9090
+# abra: <http://localhost:3000>
 
 # Using mise
 mise k8s-apply
 mise k8s-port-forward
+
+## App em Go
+kubectl port-forward service/rolldice 8081:8081
 ```
 
 ### Run
@@ -472,3 +476,305 @@ preciso usar port-forward?
 
 
 
+- Subir infra
+- Subir app
+
+> kubectl get pods
+NAME                       READY   STATUS    RESTARTS       AGE
+lgtm-5f966c7986-kk6gv      1/1     Running   4 (3h6m ago)   14d
+rolldice-cdc95cf9b-mt5b7   1/1     Running   1 (3h6m ago)   6h56m
+>
+>
+> kubectl get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP                                        20d
+lgtm         ClusterIP   10.97.4.8       <none>        3000/TCP,4040/TCP,4317/TCP,4318/TCP,9090/TCP   14d
+rolldice     ClusterIP   10.105.69.199   <none>        8080/TCP                                       6h57m
+
+
+
+
+- Fazer port-forward
+
+
+kubectl port-forward service/lgtm 3000:3000 4040:4040 4317:4317 4318:4318 9090:9090
+
+kubectl port-forward service/rolldice 8080:8080
+
+http://localhost:8080/rolldice
+
+> kubectl port-forward service/rolldice 8080:8080
+Forwarding from 127.0.0.1:8080 -> 8080
+Handling connection for 8080
+E0131 21:04:57.067070    5067 portforward.go:424] "Unhandled Error" err=<
+        an error occurred forwarding 8080 -> 8080: error forwarding port 8080 to pod baeed56b499a28020e9db082110cf9d29b0273c2264e517fe473602896dfb1b7, uid : exit status 1: 2026/02/01 00:04:57 socat[5491] E connect(5, AF=2 127.0.0.1:8080, 16): Connection refused
+ >
+error: lost connection to pod
+
+
+
+
+
+
+- Analisando:
+
+> kubectl get svc rolldice -o yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"rolldice","namespace":"default"},"spec":{"ports":[{"port":8080,"protocol":"TCP","targetPort":8080}],"selector":{"app":"rolldice"},"type":"ClusterIP"}}
+  creationTimestamp: "2026-01-31T17:05:44Z"
+  name: rolldice
+  namespace: default
+  resourceVersion: "16692"
+  uid: 21fb77c9-b087-41fc-be9a-ec1622766bc7
+spec:
+  clusterIP: 10.105.69.199
+  clusterIPs:
+  - 10.105.69.199
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: rolldice
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}
+> kubectl get endpoints rolldice -o wide
+# ou mais novo:
+kubectl get endpointSlice -l kubernetes.io/service-name=rolldice -o wide
+
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME       ENDPOINTS          AGE
+rolldice   10.244.0.48:8080   7h1m
+zsh: command not found: #
+NAME             ADDRESSTYPE   PORTS   ENDPOINTS     AGE
+rolldice-7n4xk   IPv4          8080    10.244.0.48   7h1m
+> kubectl describe svc rolldice | sed -n '/Selector/,$p' | sed -n '/Endpoints/,+3p'
+kubectl get pods -o wide --show-labels | grep -i rolldice
+
+Endpoints:                10.244.0.48:8080
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+rolldice-cdc95cf9b-mt5b7   1/1     Running   1 (3h12m ago)   7h2m   10.244.0.48   minikube   <none>           <none>            app=rolldice,pod-template-hash=cdc95cf9b
+> POD=$(kubectl get pods -l app=rolldice -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -it $POD -- sh -lc 'netstat -ltnp 2>/dev/null || ss -ltnp'
+
+sh: 1: ss: not found
+command terminated with exit code 127
+> kubectl logs $POD --tail=200
+2026/02/01 00:01:53 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/02/01 00:02:23 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:02:53 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:03:23 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:03:53 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:04:23 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:04:53 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:05:23 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:05:53 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:06:23 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:06:53 failed to upload metrics: Post "http://otel-collector:4317/v1/metrics": reader collect and export timeout
+2026/02/01 00:07:23 failed to upload metrics: Post "http://otel-collector:4317/v1/metrics": reader collect and export timeout
+2026/02/01 00:07:53 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:08:23 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+>
+> kubectl get svc rolldice -o yaml | sed -n '1,120p'
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"rolldice","namespace":"default"},"spec":{"ports":[{"port":8080,"protocol":"TCP","targetPort":8080}],"selector":{"app":"rolldice"},"type":"ClusterIP"}}
+  creationTimestamp: "2026-01-31T17:05:44Z"
+  name: rolldice
+  namespace: default
+  resourceVersion: "16692"
+  uid: 21fb77c9-b087-41fc-be9a-ec1622766bc7
+spec:
+  clusterIP: 10.105.69.199
+  clusterIPs:
+  - 10.105.69.199
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: rolldice
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}
+>
+>
+>
+> kubectl get endpoints rolldice -o wide
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME       ENDPOINTS          AGE
+rolldice   10.244.0.48:8080   7h3m
+>
+>
+> kubectl get pods -o wide | grep -i rolldice
+rolldice-cdc95cf9b-mt5b7   1/1     Running   1 (3h13m ago)   7h3m   10.244.0.48   minikube   <none>           <none>
+
+
+
+- No código da aplicação tem trecho:
+
+~~~~go
+
+	// Start HTTP server.
+	srv := &http.Server{
+		Addr:         ":8081",
+~~~~
+
+
+- Ajustando manifesto k8s
+
+
+cd /home/fernando/cursos/opentelemetry/lab-docker-otel-lgtm/examples/go
+kubectl delete -f k8s-deployment.yaml
+kubectl apply -f k8s-deployment.yaml
+
+
+kubectl port-forward service/rolldice 8081:8081
+
+http://127.0.0.1:8081/rolldice
+
+Go 	
+curl http://127.0.0.1:8081/rolldice
+
+
+> curl http://127.0.0.1:8081/rolldice
+3
+
+
+
+2026/02/01 00:22:12 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:22:42 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:23:12 failed to upload metrics: Post "http://otel-collector:4317/v1/metrics": reader collect and export timeout
+2026/02/01 00:23:42 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:24:02 processor export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/logs": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:24:02 traces export: processor export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/traces": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:24:12 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:24:42 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:25:12 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:25:42 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:26:12 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+2026/02/01 00:26:42 failed to upload metrics: reader collect and export timeout: retry-able request failure: Post "http://otel-collector:4317/v1/metrics": dial tcp: lookup otel-collector on 10.96.0.10:53: server misbehaving
+
+
+
+
+
+Show — o HTTP ficou certo. Agora sobre os logs: sua app está tentando enviar OTLP para **`http://otel-collector:4317/...`**, mas **não existe nenhum Service chamado `otel-collector`** no cluster. Você só tem o Service **`lgtm`** que expõe **4317/4318**. Então o ajuste é: **apontar o exporter OTLP da app para `lgtm` (ou criar um Service `otel-collector` apontando para o `lgtm`)**.
+
+Você tem 2 jeitos bons:
+
+---
+
+## Opção A (recomendada): ajustar as env vars da app para usar `lgtm:4317`
+
+No deployment do `rolldice`, configure o endpoint OTLP para o service `lgtm`.
+
+### 1) Confirme que o `lgtm` tem 4317
+
+Já tem: `lgtm ... 4317/TCP, 4318/TCP`.
+
+### 2) Patch no deployment (exemplo genérico)
+
+A maioria dos exemplos Go + OTel respeita **uma** dessas variáveis (depende do sample):
+
+* `OTEL_EXPORTER_OTLP_ENDPOINT`
+* `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+* `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`
+* `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
+* `OTEL_EXPORTER_OTLP_PROTOCOL` (grpc/http)
+
+Como seu log mostra **HTTP** (`Post "http://.../v1/metrics"`), ele está usando **OTLP/HTTP** (porta típica **4318**).
+Mas ele está apontando pra **4317** (que normalmente é gRPC). Então corrija **endpoint + porta** para bater com o protocolo.
+
+### ✅ Se você quer OTLP/HTTP:
+
+Use **4318**:
+
+```bash
+kubectl set env deploy/rolldice \
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
+  OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+```
+
+
+
+- Ajustei no manifesto.
+
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://lgtm:4318"
+
+
+cd /home/fernando/cursos/opentelemetry/lab-docker-otel-lgtm/examples/go
+kubectl delete -f k8s-deployment.yaml
+kubectl apply -f k8s-deployment.yaml
+
+
+kubectl port-forward service/rolldice 8081:8081
+
+http://127.0.0.1:8081/rolldice
+
+Go 	
+curl http://127.0.0.1:8081/rolldice
+
+
+
+>
+> curl http://127.0.0.1:8081/rolldice
+2
+> curl http://127.0.0.1:8081/rolldice
+6
+> curl http://127.0.0.1:8081/rolldice
+6
+> date
+Sat Jan 31 21:31:44 -03 2026
+
+
+
+
+- Pod sem logs de erro:
+The selected container has not logged any messages yet.
+
+
+
+- No painel do Grafana, verificando o Loki, tem logs do rolldice:
+
+~~~~bash
+2026-01-31 21:32:05.155infoRolled a dice: 3
+2026-01-31 21:31:43.699infoRolled a dice: 6
+2026-01-31 21:31:42.196infoRolled a dice: 6
+2026-01-31 21:31:40.173infoRolled a dice: 2
+~~~~
+
+
+## PENDENTE
+
+Explorar cenário diferente
+
+Lab do guia https://www.elastic.co/observability-labs/blog/manual-instrumentation-apps-opentelemetry , usando Elastic e instrumentação manual. 
+
+App “Elastiflix” do guia da Elastic, repo: https://github.com/elastic/observability-examples/blob/main/Elastiflix/README.md 
+
+Material bom: https://medium.com/@ancilartech/the-ultimate-go-observability-cheat-sheet-opentelemetry-edition-9e020eecc747 
+
+Explorar Lab de aplicação com outras funcionalidades. Adicionar um script que pode ajudar a simular latencias.
+
+Lab para migração de Grafana para ELK e vice-versa.
