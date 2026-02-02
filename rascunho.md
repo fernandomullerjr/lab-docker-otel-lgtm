@@ -765,16 +765,44 @@ The selected container has not logged any messages yet.
 ~~~~
 
 
+
+
+
+----------------------------------------------------------
+----------------------------------------------------------
+----------------------------------------------------------
+----------------------------------------------------------
 ## PENDENTE
 
-Explorar cenário diferente
+- Material bom: https://medium.com/@ancilartech/the-ultimate-go-observability-cheat-sheet-opentelemetry-edition-9e020eecc747 
 
+- Explorar Lab de aplicação com outras funcionalidades. Adicionar um script que pode ajudar a simular latencias na aplicação em Go "Rolldice" ou criar app que fala com ela.
+
+- Explorar cenário diferente
+
+- Lab do guia https://www.elastic.co/observability-labs/blog/manual-instrumentation-apps-opentelemetry , usando Elastic e instrumentação manual. 
+App “Elastiflix” do guia da Elastic, repo: https://github.com/elastic/observability-examples/blob/main/Elastiflix/README.md
+Aplicação tem vários microserviços em várias linguagens.
+Estrutura pronta é disponível em Docker-compose.
+Adaptar ela para Kubernetes.
+
+
+- Lab para migração de Grafana para ELK e vice-versa.
+
+
+
+
+
+## Dia 01/02/2026
+
+- Explorar cenário diferente
 Lab do guia https://www.elastic.co/observability-labs/blog/manual-instrumentation-apps-opentelemetry , usando Elastic e instrumentação manual. 
-
 App “Elastiflix” do guia da Elastic, repo: https://github.com/elastic/observability-examples/blob/main/Elastiflix/README.md 
 
-Material bom: https://medium.com/@ancilartech/the-ultimate-go-observability-cheat-sheet-opentelemetry-edition-9e020eecc747 
+lab é extenso, deixar para segundo momento
 
-Explorar Lab de aplicação com outras funcionalidades. Adicionar um script que pode ajudar a simular latencias.
 
-Lab para migração de Grafana para ELK e vice-versa.
+
+- Explorar Lab de aplicação com outras funcionalidades. Adicionar um script que pode ajudar a simular latencias na aplicação em Go "Rolldice" ou criar app que fala com ela.
+
+
