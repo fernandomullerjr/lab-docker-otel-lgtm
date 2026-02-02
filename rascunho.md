@@ -806,3 +806,264 @@ lab é extenso, deixar para segundo momento
 - Explorar Lab de aplicação com outras funcionalidades. Adicionar um script que pode ajudar a simular latencias na aplicação em Go "Rolldice" ou criar app que fala com ela.
 
 
+
+
+
+
+A forma mais útil de “evoluir” esse `rolldice` é transformar o exemplo em um **mini-sistema** (2–4 serviços) com **dependências reais** (HTTP, fila, banco/cache) e com cenários de **latência, erro, retry e fan-out**. Isso gera traces mais interessantes (árvore de spans), métricas acionáveis (RED/USE) e logs correlacionados.
+
+## 1) Evoluir a aplicação atual (mantendo 1 serviço)
+
+### A. Mais rotas com comportamento diferente
+Adicionar endpoints que produzam padrões distintos:
+- `GET /healthz` e `GET /readyz` (sem instrumentação “pesada”)
+- `GET /roll?faces=6&delayMs=100&failRate=0.1`
+- `POST /orders` (gera um “workflow” com vários passos/spans)
+- `GET /panic` (simula crash/controlado para ver erros e logs)
+
+**Por quê:** você testa `http.route`, status codes, erros, latência e cardinalidade de atributos.
+
+### B. Spans internos (subspans) e eventos
+Hoje existe 1 span `roll`. Criar subspans e eventos:
+- `validate_request`
+- `compute_roll` (com atributos `faces`, `rng`)
+- `write_response`
+- `span.AddEvent("cache_hit")`, `span.RecordError(err)`
+
+**Por quê:** isso cria “história” no trace, útil em troubleshooting.
+
+### C. Métricas mais “operacionais”
+Além do histograma `dice.roll`, adicionar métricas estilo **RED**:
+- `http.server.requests` (já pode vir do `otelhttp`, dependendo da config) + **labels/attributes controlados**
+- contador `rolldice.requests_total` por resultado (`success/failure`)
+- histograma `rolldice.roll.duration_ms`
+- gauge/observable: tamanho de fila interna, cache hits, etc.
+
+**Cuidado:** evite atributos de alta cardinalidade (ex.: `user_id`, `request_id`).
+
+### D. Logs estruturados com correlação e níveis
+- Logar `trace_id`/`span_id` (o bridge geralmente já correlaciona, mas vale garantir campos úteis)
+- Padronizar chaves: `route`, `latency_ms`, `error.type`, `error.msg`
+
+---
+
+## 2) Criar um sistema com múltiplos serviços (recomendado)
+
+### Arquitetura mínima (2 serviços)
+1. **api-gateway** (HTTP público)
+2. **rolldice** (serviço atual)
+
+Fluxo:
+`gateway -> rolldice` via HTTP, propagando contexto.
+
+**O que testar:**
+- Propagação W3C (`traceparent`) entre serviços
+- Spans client/server (HTTP client instrumentado)
+- Erros e retries no client (ex.: timeout)
+
+### Arquitetura “boa de laboratório” (3–4 serviços)
+1. **gateway**: recebe requests e inicia o trace
+2. **rolldice**: calcula, registra métrica e log
+3. **scoreboard**: persiste resultados (Postgres) e expõe `GET /stats`
+4. **worker**: consome eventos (Redis Streams / NATS / Kafka) e faz pós-processamento
+
+**O que isso habilita:**
+- Traces distribuídos com fan-out (HTTP + mensagem)
+- Métricas por dependência (DB, cache, fila)
+- Logs do worker correlacionados a um trace originado no gateway (via propagação em mensagens)
+
+---
+
+## 3) Dependências “reais” para enriquecer observabilidade
+
+### A. Banco de dados (Postgres)
+- Gravar cada roll (timestamp, resultado, request_id)
+- Endpoint `GET /stats` (p95, contagem por face, últimos N rolls)
+
+Instrumentação:
+- `database/sql` + instrumentação OTel (ou spans manuais se preferir aprender na raça)
+
+Métricas úteis:
+- `db.query.duration`
+- `db.pool.in_use`, `db.pool.open_connections`
+
+### B. Cache (Redis)
+- Cachear `GET /stats` por 5–10s
+- Span/eventos: `cache_hit`, `cache_miss`
+
+### C. Resiliência (timeout/retry/circuit breaker)
+- Timeout curto no client HTTP do gateway
+- Retry com backoff (e registrar atributos/events)
+- Contadores: `retries_total`, `timeouts_total`
+
+---
+
+## 4) Experimentos especificamente bons para OTel
+
+- **Sampling**: configurar head/tail sampling no Collector e comparar o que chega no Tempo
+- **Exemplars**: correlacionar métricas com trace (quando suportado)
+- **Baggage**: passar `tenant`/`experiment` via baggage e ver nos spans (com cuidado de cardinalidade)
+- **Custom propagator** (opcional): entender propagação além do básico
+- **SLO/SLI**: medir p95 de `/rolldice` e taxa de erro; criar um dashboard simples
+
+---
+
+## 5) Próximo passo “prático” (sugestão de roadmap)
+1. Criar **gateway** chamando `rolldice` (HTTP client instrumentado).
+2. Adicionar **Postgres** + endpoint `/stats`.
+3. Introduzir **fila** (worker) para processamento assíncrono.
+4. Criar **cenários de falha** (delay, erro, timeout) com flags/env vars.
+5. Montar um dashboard no Grafana (RED + logs/traces).
+
+Se você quiser, eu preparo um esqueleto de projeto (ex.: `examples/go/gateway`, `examples/go/scoreboard`, manifests K8s e `docker compose`) já com propagação de contexto e alguns spans/métricas padrão.
+
+
+
+
+
+
+
+1. Criar **gateway** chamando `rolldice` (HTTP client instrumentado).
+
+1. Criar **gateway** chamando `rolldice` (HTTP client instrumentado).
+1. Criar **gateway** chamando `rolldice` (HTTP client instrumentado).
+1. Criar **gateway** chamando `rolldice` (HTTP client instrumentado).
+1. Criar **gateway** chamando `rolldice` (HTTP client instrumentado).
+
+
+
+
+## Como rodar (rápido)
+
+### Docker (tudo junto)
+```bash
+cd /home/fernando/cursos/opentelemetry/lab-docker-otel-lgtm/examples/go
+docker compose -f docker-compose.demo.yml up --build
+```
+
+- Gateway: `http://localhost:8080/roll`
+- Rolldice direto: `http://localhost:8081/rolldice`
+- Grafana: `http://localhost:3000` (admin/admin)
+
+### Kubernetes (assumindo que `lgtm` já está no cluster)
+1) Build/load das imagens no Minikube:
+```bash
+eval "$(minikube docker-env)"
+cd /home/fernando/cursos/opentelemetry/lab-docker-otel-lgtm/examples/go
+docker build -t rolldice:latest .
+docker build -t gateway:latest ./gateway
+```
+
+2) Apply:
+```bash
+kubectl apply -f k8s-deployment.yaml
+kubectl apply -f k8s-gateway.yaml
+```
+
+3) Port-forward:
+```bash
+kubectl port-forward service/lgtm 3000:3000 4318:4318
+kubectl port-forward service/gateway 8080:8080
+```
+
+4) Tráfego:
+```bash
+chmod +x generate-traffic.sh
+./generate-traffic.sh
+```
+
+---
+
+
+
+
+
+
+
+> docker build -t gateway:latest ./gateway
+[+] Building 9.1s (10/10) FINISHED                                                                                                                                                                                                                                       docker:default
+ => [internal] load build definition from Dockerfile                                                                                                                                                                                                                               0.0s
+ => => transferring dockerfile: 207B                                                                                                                                                                                                                                               0.0s
+ => [internal] load metadata for docker.io/library/golang:1.25                                                                                                                                                                                                                     0.7s
+ => [internal] load .dockerignore                                                                                                                                                                                                                                                  0.0s
+ => => transferring context: 2B                                                                                                                                                                                                                                                    0.0s
+ => [1/6] FROM docker.io/library/golang:1.25@sha256:ce63a16e0f7063787ebb4eb28e72d477b00b4726f79874b3205a965ffd797ab2                                                                                                                                                               0.0s
+ => => resolve docker.io/library/golang:1.25@sha256:ce63a16e0f7063787ebb4eb28e72d477b00b4726f79874b3205a965ffd797ab2                                                                                                                                                               0.0s
+ => [internal] load build context                                                                                                                                                                                                                                                  0.0s
+ => => transferring context: 2.55kB                                                                                                                                                                                                                                                0.0s
+ => CACHED [2/6] WORKDIR /app                                                                                                                                                                                                                                                      0.0s
+ => CACHED [3/6] COPY go.mod go.sum ./                                                                                                                                                                                                                                             0.0s
+ => CACHED [4/6] RUN go mod download                                                                                                                                                                                                                                               0.0s
+ => [5/6] COPY *.go ./                                                                                                                                                                                                                                                             0.0s
+ => ERROR [6/6] RUN CGO_ENABLED=0 GOOS=linux go build -o /gateway                                                                                                                                                                                                                  8.3s
+------
+ > [6/6] RUN CGO_ENABLED=0 GOOS=linux go build -o /gateway:
+8.036 # github.com/fernando/lab-docker-otel-lgtm/examples/go/gateway
+8.036 ./otel.go:43:2: declared and not used: handleErr
+------
+Dockerfile:10
+--------------------
+   8 |     COPY *.go ./
+   9 |
+  10 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o /gateway
+  11 |
+  12 |     EXPOSE 8080
+--------------------
+ERROR: failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o /gateway" did not complete successfully: exit code: 1
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------
+----------------------------------------------------------
+----------------------------------------------------------
+----------------------------------------------------------
+## PENDENTE
+
+- TSHOOT de erro no build do Gateway.
+~~~~bash
+8.036 # github.com/fernando/lab-docker-otel-lgtm/examples/go/gateway
+8.036 ./otel.go:43:2: declared and not used: handleErr
+ERROR: failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o /gateway" did not complete successfully: exit code: 1
+~~~~
+
+- Aplicar o Roadmap e Experimentos:
+
+## 4) Experimentos especificamente bons para OTel
+
+- **Sampling**: configurar head/tail sampling no Collector e comparar o que chega no Tempo
+- **Exemplars**: correlacionar métricas com trace (quando suportado)
+- **Baggage**: passar `tenant`/`experiment` via baggage e ver nos spans (com cuidado de cardinalidade)
+- **Custom propagator** (opcional): entender propagação além do básico
+- **SLO/SLI**: medir p95 de `/rolldice` e taxa de erro; criar um dashboard simples
+
+---
+
+## 5) Próximo passo “prático” (sugestão de roadmap)
+1. Criar **gateway** chamando `rolldice` (HTTP client instrumentado).
+2. Adicionar **Postgres** + endpoint `/stats`.
+3. Introduzir **fila** (worker) para processamento assíncrono.
+4. Criar **cenários de falha** (delay, erro, timeout) com flags/env vars.
+5. Montar um dashboard no Grafana (RED + logs/traces).
+
+
+- Explorar Lab de aplicação com outras funcionalidades. Adicionar um script que pode ajudar a simular latencias na aplicação em Go "Rolldice" ou criar app que fala com ela.
+
+- Material bom: https://medium.com/@ancilartech/the-ultimate-go-observability-cheat-sheet-opentelemetry-edition-9e020eecc747 
+
+- Explorar cenário diferente
+
+- Lab do guia https://www.elastic.co/observability-labs/blog/manual-instrumentation-apps-opentelemetry , usando Elastic e instrumentação manual. 
+App “Elastiflix” do guia da Elastic, repo: https://github.com/elastic/observability-examples/blob/main/Elastiflix/README.md
+Aplicação tem vários microserviços em várias linguagens.
+Estrutura pronta é disponível em Docker-compose.
+Adaptar ela para Kubernetes.
+
+
+- Lab para migração de Grafana para ELK e vice-versa.
